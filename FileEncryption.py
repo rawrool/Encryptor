@@ -55,27 +55,33 @@ def MyfileEncrypt(filepath):
         filename, file_ext = os.path.splitext(filepath)
         # prints successful statement
         print("File was successfully encrypted.")
-        f = open(filepath, 'w')
+        newExt = input("Enter the extension of the new file: ")
+        if newExt[0] == '.':
+            newName = filename+newExt
+        else:
+            newName = filename+'.'+newExt
+        f = open(newName, 'w')
         secretInfo = {}
         secretInfo["key"] = base64.b64encode(Key).decode('utf-8')
         secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
         secretInfo["file_extension"] = file_ext
         secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
-        
         json.dump(secretInfo, f)
         f.close()
-        # returns C, IV, Key, file_ext
-        return C, IV, Key, file_ext
+        file.close()
+        print("New file saved as "+newName)
+    os.remove(filepath)
 
 
 def Mydecrypt(filename):
     jread = open(filename, 'r')
     jsonContent = json.load(jread)
-    jread.close()
     IV = base64.b64decode(jsonContent["IV"])
     C = base64.b64decode(jsonContent["ciphertext"])
     Key =  base64.b64decode(jsonContent["key"])
     file_ext =  jsonContent["file_extension"]
+    jread.close()
+
     # Construct a Cipher object, with the key, iv, and additionally the
     # GCM tag used for authenticating the message.
     decryptor = Cipher(
@@ -83,11 +89,16 @@ def Mydecrypt(filename):
         modes.CBC(IV),
         backend=default_backend()
     ).decryptor()
+    unpadder = padding.PKCS7(PADDING_SIZE).unpadder()
     fileN, file_extension = os.path.splitext(filename)
     originalFile = fileN+file_ext
+    decrypted = decryptor.update(C) + decryptor.finalize()
     replace = open(originalFile, "wb")
-    replace.write(decryptor.update(C) + decryptor.finalize())
+    replace.write(base64.b64decode(unpadder.update(decrypted)))
+    print('File was successfully decrypted.')
+    print('File restored to '+originalFile)
     replace.close()
+    os.remove(filename)
     # Decryption gets us the authenticated plaintext.
     # If the tag does not match an InvalidTag exception will be raised.
     #return decryptor.update(C) + decryptor.finalize()
