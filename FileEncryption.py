@@ -101,8 +101,6 @@ def MyfileDecrypt(filepath):
     C = base64.b64decode(jsonContent["ciphertext"])
     Key = base64.b64decode(jsonContent["key"])
     file_ext = jsonContent["file_extension"]
-    # closes the file
-    jread.close()
     # initializes the unpadder
     unpadder = padding.PKCS7(constants.PADDING_SIZE).unpadder()
     # separates the filename from the extension
