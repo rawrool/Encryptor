@@ -6,7 +6,7 @@ Members: Anthony & Raul
 import os
 import json
 import base64
-#import constants
+import constants
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import (
@@ -14,17 +14,13 @@ from cryptography.hazmat.primitives.ciphers import (
 )
 from cryptography.hazmat.primitives import padding
 
-REQ_KEY_BYTES = 32
-IV_LENGTH = 16
-KEY_LENGTH = 32
-PADDING_SIZE = 256
 
 def Myencrypt(message, key):
-    if len(key) < REQ_KEY_BYTES:
+    if len(key) < constants.REQ_KEY_BYTES:
         return "Error: key length was less than the required bytes"
     else:
         # Generate a random IV of IV_LENGTH.
-        IV = os.urandom(IV_LENGTH)
+        IV = os.urandom(constants.IV_LENGTH)
         # Construct an AES-CBC Cipher object with the given key and a
         # randomly generated IV.
         encryptor = Cipher(
@@ -44,44 +40,44 @@ def MyfileEncrypt(filepath):
         # reads the file as a string and stored in fileToString
         fileToString = base64.b64encode(file.read())
         # initializes the padder
-        padder = padding.PKCS7(PADDING_SIZE).padder()
+        padder = padding.PKCS7(constants.PADDING_SIZE).padder()
         # pads the string
         paddedString = padder.update(fileToString)
         # generates a random Key of KEY_LENGTH
-        Key = os.urandom(KEY_LENGTH)
+        Key = os.urandom(constants.KEY_LENGTH)
         # uses module to generate C and IV
         C, IV = Myencrypt(paddedString, Key)
-        # splits the filepath to get the seperate filename and file_ext
+        # splits the filepath to get the separate filename and file_ext
         filename, file_ext = os.path.splitext(filepath)
         # prints successful statement
         print("File was successfully encrypted.")
+        # creates an extension for encrypted file
         newExt = input("Enter the extension of the new file: ")
         if newExt[0] == '.':
             newName = filename+newExt
         else:
             newName = filename+'.'+newExt
-        f = open(newName, 'w')
+        # creates a file of newExt
+        encryptedFile = open(newName, 'w')
+        # dictionary to be stored in json
         secretInfo = {}
+        # converts bytes to non-bytes, so they can be stored on json
         secretInfo["key"] = base64.b64encode(Key).decode('utf-8')
         secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
-        secretInfo["file_extension"] = file_ext
         secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
-        json.dump(secretInfo, f)
-        f.close()
+        secretInfo["file_extension"] = file_ext
+        # dump the data from json onto the created file
+        json.dump(secretInfo, encryptedFile)
+        # close all opened files
+        encryptedFile.close()
         file.close()
+        # prints newly created encrypted file's name
         print("New file saved as "+newName)
+    # removes original file
     os.remove(filepath)
 
 
-def Mydecrypt(filename):
-    jread = open(filename, 'r')
-    jsonContent = json.load(jread)
-    IV = base64.b64decode(jsonContent["IV"])
-    C = base64.b64decode(jsonContent["ciphertext"])
-    Key =  base64.b64decode(jsonContent["key"])
-    file_ext =  jsonContent["file_extension"]
-    jread.close()
-
+def Mydecrypt(Key, IV, C):
     # Construct a Cipher object, with the key, iv, and additionally the
     # GCM tag used for authenticating the message.
     decryptor = Cipher(
@@ -89,19 +85,45 @@ def Mydecrypt(filename):
         modes.CBC(IV),
         backend=default_backend()
     ).decryptor()
-    unpadder = padding.PKCS7(PADDING_SIZE).unpadder()
-    fileN, file_extension = os.path.splitext(filename)
-    originalFile = fileN+file_ext
-    decrypted = decryptor.update(C) + decryptor.finalize()
-    replace = open(originalFile, "wb")
-    replace.write(base64.b64decode(unpadder.update(decrypted)))
-    print('File was successfully decrypted.')
-    print('File restored to '+originalFile)
-    replace.close()
-    os.remove(filename)
     # Decryption gets us the authenticated plaintext.
     # If the tag does not match an InvalidTag exception will be raised.
-    #return decryptor.update(C) + decryptor.finalize()
+    plaintext = decryptor.update(C) + decryptor.finalize()
+    return plaintext
 
+
+def MyfileDecrypt(filepath):
+    # reads the file
+    jread = open(filepath, 'r')
+    # loads all the json content
+    jsonContent = json.load(jread)
+    # decodes all json data into their variables
+    IV = base64.b64decode(jsonContent["IV"])
+    C = base64.b64decode(jsonContent["ciphertext"])
+    Key = base64.b64decode(jsonContent["key"])
+    file_ext = jsonContent["file_extension"]
+    # closes the file
+    jread.close()
+    # initializes the unpadder
+    unpadder = padding.PKCS7(constants.PADDING_SIZE).unpadder()
+    # separates the filename from the extension
+    filename, file_extension = os.path.splitext(filepath)
+    # original filename and original file extension
+    originalFile = filename+file_ext
+    # get decrypted plaintext
+    decryptedPT = Mydecrypt(Key, IV, C)
+    # removes the padding from the plaintext
+    unpaddedPT = base64.b64decode(unpadder.update(decryptedPT))
+    # recreates file with original name
+    replace = open(originalFile, "wb")
+    # write original data on recreated file
+    replace.write(unpaddedPT)
+    # prints successful statements
+    print('File was successfully decrypted.')
+    print('File restored to '+originalFile)
+    # closes all opened files
+    jread.close()
+    replace.close()
+    # removes encrypted file
+    os.remove(filepath)
 
 
