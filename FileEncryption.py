@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 Team: Sleeper Reapers
 Members: Anthony & Raul
@@ -128,9 +130,8 @@ def MyfileDecrypt(filepath):
             replace.close()
             # removes encrypted file
             os.remove(filepath)
-         except:
+        except:
             jread.close()
             print("File was never encrypted, no decryption executed")
-     else:
+    else:
         print("File not found, no decryption executed")
-
