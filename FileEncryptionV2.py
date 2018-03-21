@@ -14,10 +14,11 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import (
     Cipher, algorithms, modes
 )
+from cryptography.hazmat.primitives.asymmetric.padding import OAEP
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric.padding import MGF1
 
 def Myencrypt(message, key):
     if len(key) < constants.REQ_KEY_BYTES:
@@ -70,52 +71,43 @@ def MyfileEncrypt(filepath):
             print("New file saved as "+newName)
         # removes original file
         os.remove(filepath)
-        return (C, IV, Key, file_ext)
+        return (C, IV, Key, newExt)
     else:
         print("File not found, no encryption executed")
-        
-def GenerateRSAPublicKey():
-    newKey = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    newFilePrivate = open("RSAprivateKey.pem", "w")
-    privKeyToString = newKey.exportKey(format = 'PEM')
-    newFilePrivate.write(privKeyToString)
-    newFilePrivate.close()
 
     
         
 def MyRSAEncrypt(filepath, RSA_PublicKey_FilePath):
     C, IV, Key, file_ext = MyfileEncrypt(filepath)
     with open(RSA_PublicKey_FilePath, "rb") as key_file:
-        private_key = serialization.load_pem_private_key(
+        public_key = serialization.load_pem_public_key(
             key_file.read(),
-            password=None,
             backend=default_backend()
         )
-    RSAcipher = private_key.encrypt(
+    RSAcipher = public_key.encrypt(
             Key,
-         padding.OAEP(
-             mgf=padding.MGF1(algorithm=hashes.SHA256()),
+         OAEP(
+             mgf= MGF1(algorithm=hashes.SHA256()),
              algorithm=hashes.SHA256(),
              label=None
          )
     ) 
-    key_file.close()
-    encryptedFile = open(filepath, 'w')
+    filename, file_extOld = os.path.splitext(filepath)
+    newFile = filename + file_ext     
+    encryptedFile = open(newFile, 'w')
     # dictionary to be stored in json
     secretInfo = {}
     # converts bytes to non-bytes, so they can be stored on json
     secretInfo["RSAcipher"] = base64.b64encode(RSAcipher).decode('utf-8')
     secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
     secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
-    secretInfo["file_extension"] = file_ext
+    secretInfo["file_extension"] = file_extOld
     # dump the data from json onto the created file
     json.dump(secretInfo, encryptedFile)
     # close all opened files
     encryptedFile.close()
+    key_file.close()
+
     #return RSAcipher, C, IV, file_ext    
     
     
@@ -143,12 +135,10 @@ def MyfileDecrypt(Key, IV, C):
         decryptedPT = Mydecrypt(Key, IV, C)
         return C, Key, IV, decryptedPT
         
-
-
         
         
         
-def MyRSADecrypt(filepath, RSA_PublicKey_FilePath):
+def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
     # reads the file
     if(os.path.isfile(filepath)):
         try:
@@ -161,19 +151,22 @@ def MyRSADecrypt(filepath, RSA_PublicKey_FilePath):
             RSAcipher = base64.b64decode(jsonContent["RSAcipher"])
             file_ext = jsonContent["file_extension"]
             filename, file_extension = os.path.splitext(filepath)
+            jread.close()
         except:
             jread.close()
-            print("File was never encrypted, no decryption executed")    
-    with open(RSA_PublicKey_FilePath, "rb") as key_file:
+            print("File was never encrypted, no decryption executed") 
+    password = "pass"
+    passwordBytes = password.encode('utf-8')
+    with open(RSA_PrivateKey_FilePath, "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
-            password=None,
+            password=passwordBytes,
             backend=default_backend()
         )
     Key = private_key.decrypt(
             RSAcipher,
-         padding.OAEP(
-             mgf=padding.MGF1(algorithm=hashes.SHA256()),
+         OAEP(
+             mgf=MGF1(algorithm=hashes.SHA256()),
              algorithm=hashes.SHA256(),
              label=None
          )
@@ -193,7 +186,8 @@ def MyRSADecrypt(filepath, RSA_PublicKey_FilePath):
     # closes all opened files
     replace.close()
     # removes encrypted file
-    os.remove(filepath)
     key_file.close()
+
+    os.remove(filepath)
 
     #return RSAcipher, C, IV, file_ext    
