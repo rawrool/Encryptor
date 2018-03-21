@@ -127,18 +127,8 @@ def Mydecrypt(Key, IV, C):
     return plaintext
 
 
-def MyfileDecrypt(Key, IV, C):
-        # initializes the unpadder
-        # separates the filename from the extension
+def MyfileDecrypt(filepath):
         # original filename and original file extension
-        # get decrypted plaintext
-        decryptedPT = Mydecrypt(Key, IV, C)
-        return C, Key, IV, decryptedPT
-        
-        
-        
-        
-def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
     # reads the file
     if(os.path.isfile(filepath)):
         try:
@@ -150,44 +140,68 @@ def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
             C = base64.b64decode(jsonContent["ciphertext"])
             RSAcipher = base64.b64decode(jsonContent["RSAcipher"])
             file_ext = jsonContent["file_extension"]
-            filename, file_extension = os.path.splitext(filepath)
             jread.close()
+            return C, RSAcipher, IV, file_ext
         except:
             jread.close()
-            print("File was never encrypted, no decryption executed") 
-    password = "pass"
-    passwordBytes = password.encode('utf-8')
-    with open(RSA_PrivateKey_FilePath, "rb") as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(),
-            password=passwordBytes,
-            backend=default_backend()
-        )
-    Key = private_key.decrypt(
-            RSAcipher,
-         OAEP(
-             mgf=MGF1(algorithm=hashes.SHA256()),
-             algorithm=hashes.SHA256(),
-             label=None
-         )
-    )
-    C, Key, IV, decryptedPT = MyfileDecrypt(Key, IV, C)
-    unpadder = padding.PKCS7(constants.PADDING_SIZE).unpadder()
+            print("File was never encrypted, no decryption executed")
+            file_ext = 0
+            C = 0
+            RSAcipher = 0
+            IV = 0
+            return C, RSAcipher, IV, file_ext
+            
+    else:
+        print("File was not found, no decryption executed")
+        file_ext = 0
+        C = 0
+        RSAcipher = 0
+        IV = 0
+        return C, RSAcipher, IV, file_ext
+        
+        
+        
+        
+def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
+    C, RSAcipher, IV, file_ext = MyfileDecrypt(filepath)
+    # separates the filename from the extension
+    filename, file_extension = os.path.splitext(filepath)
     originalFile = filename+file_ext
-    # removes the padding from the plaintext
-    unpaddedPT = base64.b64decode(unpadder.update(decryptedPT))
-    # recreates file with original name
-    replace = open(originalFile, "wb")
-    # write original data on recreated file
-    replace.write(unpaddedPT)
-    # prints successful statements
-    print('File was successfully decrypted.')
-    print('File restored to '+originalFile)
-    # closes all opened files
-    replace.close()
-    # removes encrypted file
-    key_file.close()
-
-    os.remove(filepath)
-
-    #return RSAcipher, C, IV, file_ext    
+    if C != 0:
+        password = "pass"
+        passwordBytes = password.encode('utf-8')
+        with open(RSA_PrivateKey_FilePath, "rb") as key_file:
+            private_key = serialization.load_pem_private_key(
+                key_file.read(),
+                password=passwordBytes,
+                backend=default_backend()
+            )
+        Key = private_key.decrypt(
+                RSAcipher,
+             OAEP(
+                 mgf=MGF1(algorithm=hashes.SHA256()),
+                 algorithm=hashes.SHA256(),
+                 label=None
+             )
+        )
+        # get decrypted plaintext
+        decryptedPT = Mydecrypt(Key, IV, C)
+        # initializes the unpadder
+        unpadder = padding.PKCS7(constants.PADDING_SIZE).unpadder()
+        # removes the padding from the plaintext
+        unpaddedPT = base64.b64decode(unpadder.update(decryptedPT))
+        # recreates file with original name
+        replace = open(originalFile, "wb")
+        # write original data on recreated file
+        replace.write(unpaddedPT)
+        # prints successful statements
+        print('File was successfully decrypted.')
+        print('File restored to '+originalFile)
+        # closes all opened files
+        replace.close()
+        # removes encrypted file
+        key_file.close()
+        os.remove(filepath)
+        #return RSAcipher, C, IV, file_ext
+    else:
+        print('There was a problem with the file '+originalFile+' no decryption executed')
