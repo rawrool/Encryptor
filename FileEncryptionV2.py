@@ -61,8 +61,9 @@ def MyfileEncrypt(filepath):
             newExt = input("Enter the extension of the new file: ")
             if newExt[0] == '.':
                 newName = filename+newExt
-            else:
-                newName = filename+'.'+newExt
+            elif newExt[0] != '.':
+                newExt = '.'+newExt
+                newName = filename+newExt
             # creates a file of newExt
             encryptedFile = open(newName, 'w')
             encryptedFile.close()
