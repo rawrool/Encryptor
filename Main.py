@@ -10,6 +10,7 @@ import FileEncryptionV2
 choice = 'X'
 
 while choice != 'C' and choice != 'c':
+    print("")
     print("MENU")
     print("A - Encrypt a file")
     print("B - Decrypt a file")
@@ -26,6 +27,6 @@ while choice != 'C' and choice != 'c':
     if choice == 'C' or choice == 'c':
         print("")
         print("Have a nice day :D")
-    else:
+    if choice !='C' and choice !='c'and choice !='B' and choice !='b' and choice !='A' and choice !='a':
         print("")
         print("Invalid option - "+choice)
