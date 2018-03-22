@@ -73,40 +73,45 @@ def MyfileEncrypt(filepath):
         os.remove(filepath)
         return (C, IV, Key, newExt)
     else:
-        print("File not found, no encryption executed")
+        print("File not found, no encryption executed.")
 
     
         
 def MyRSAEncrypt(filepath, RSA_PublicKey_FilePath):
-    C, IV, Key, file_ext = MyfileEncrypt(filepath)
-    with open(RSA_PublicKey_FilePath, "rb") as key_file:
-        public_key = serialization.load_pem_public_key(
-            key_file.read(),
-            backend=default_backend()
-        )
-    RSAcipher = public_key.encrypt(
-            Key,
-         OAEP(
-             mgf= MGF1(algorithm=hashes.SHA256()),
-             algorithm=hashes.SHA256(),
-             label=None
-         )
-    ) 
-    filename, file_extOld = os.path.splitext(filepath)
-    newFile = filename + file_ext     
-    encryptedFile = open(newFile, 'w')
-    # dictionary to be stored in json
-    secretInfo = {}
-    # converts bytes to non-bytes, so they can be stored on json
-    secretInfo["RSAcipher"] = base64.b64encode(RSAcipher).decode('utf-8')
-    secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
-    secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
-    secretInfo["file_extension"] = file_extOld
-    # dump the data from json onto the created file
-    json.dump(secretInfo, encryptedFile)
-    # close all opened files
-    encryptedFile.close()
-    key_file.close()
+    if os.path.isfile(filepath) and os.path.isfile(RSA_PublicKey_FilePath):
+        C, IV, Key, file_ext = MyfileEncrypt(filepath)
+        with open(RSA_PublicKey_FilePath, "rb") as key_file:
+            public_key = serialization.load_pem_public_key(
+                key_file.read(),
+                backend=default_backend()
+            )
+        RSAcipher = public_key.encrypt(
+                Key,
+             OAEP(
+                 mgf= MGF1(algorithm=hashes.SHA256()),
+                 algorithm=hashes.SHA256(),
+                 label=None
+             )
+        ) 
+        filename, file_extOld = os.path.splitext(filepath)
+        newFile = filename + file_ext     
+        encryptedFile = open(newFile, 'w')
+        # dictionary to be stored in json
+        secretInfo = {}
+        # converts bytes to non-bytes, so they can be stored on json
+        secretInfo["RSAcipher"] = base64.b64encode(RSAcipher).decode('utf-8')
+        secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
+        secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
+        secretInfo["file_extension"] = file_extOld
+        # dump the data from json onto the created file
+        json.dump(secretInfo, encryptedFile)
+        # close all opened files
+        encryptedFile.close()
+        key_file.close()
+    elif not os.path.isfile(filepath):
+        print(filepath+" not found, no encryption executed.")
+    elif not os.path.isfile(RSA_PublicKey_FilePath):
+        print("Public key not found, no encryption executed.")
 
     #return RSAcipher, C, IV, file_ext    
     
@@ -144,16 +149,16 @@ def MyfileDecrypt(filepath):
             return C, RSAcipher, IV, file_ext
         except:
             jread.close()
-            print("File was never encrypted, no decryption executed")
-            file_ext = 0
+            print(filepath+" was never encrypted, no decryption executed.")
+            file_ext = "error"
             C = 0
             RSAcipher = 0
             IV = 0
             return C, RSAcipher, IV, file_ext
             
     else:
-        print("File was not found, no decryption executed")
-        file_ext = 0
+        print(filepath+" was not found, no decryption executed.")
+        file_ext = "error"
         C = 0
         RSAcipher = 0
         IV = 0
@@ -167,7 +172,7 @@ def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
     # separates the filename from the extension
     filename, file_extension = os.path.splitext(filepath)
     originalFile = filename+file_ext
-    if C != 0:
+    if C != 0 and os.path.isfile(RSA_PrivateKey_FilePath):
         password = "pass"
         passwordBytes = password.encode('utf-8')
         with open(RSA_PrivateKey_FilePath, "rb") as key_file:
@@ -203,5 +208,5 @@ def MyRSADecrypt(filepath, RSA_PrivateKey_FilePath):
         key_file.close()
         os.remove(filepath)
         #return RSAcipher, C, IV, file_ext
-    else:
-        print('There was a problem with the file '+originalFile+' no decryption executed')
+    elif not os.path.isfile(RSA_PrivateKey_FilePath):
+        print('Private key not found, no decryption executed.')
