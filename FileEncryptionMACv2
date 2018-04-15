@@ -9,6 +9,7 @@ import os
 import json
 import base64
 import cryptography
+
 import constants
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -101,8 +102,10 @@ def MyfileDecryptMAC(C, IV, EncKey, fileName, ext, HMACKey, tag):
     contents = MydecryptMAC(C, IV, EncKey, HMACKey, tag)
     # store decoded string
     decodedContents = base64.b64decode(contents)
+    # separates the filename from the extension
+    originalFileName, encFileExt = os.path.splitext(fileName)
     # decrypted file name and ext
-    decFile = fileName + ext
+    decFile = originalFileName + ext
     # store message onto decrypted file
     with open(decFile, 'wb') as file:
         # write to file
@@ -193,8 +196,10 @@ def keyGenerator():
 
 
 def dirEncryptor():
+    # current work directory
+    dirPath = os.path.dirname(os.path.realpath(__file__))
     # gets file list of cwd
-    files = os.listdir()
+    files = os.listdir(dirPath)
 
     # if the folder with the keys currently doesn't exist
     if "keyFolder" not in files:
@@ -203,35 +208,38 @@ def dirEncryptor():
 
     # iterate through the files and RSAEncrypt each one
     for fileName in files:
-        # RSAEncrypt each file
-        RSACipher, C, IV, tag, ext = MyRSAEncrypt(fileName, "keyFolder/public_key.pem")
+        if fileName != "keyFolder" and fileName != "FileEncryptionMAC.py" and fileName != "constants.py":
+            # RSAEncrypt each file
+            RSACipher, C, IV, tag, ext = MyRSAEncrypt(fileName, "keyFolder/public_key.pem")
 
-        # get file's name
-        fname = os.path.splitext(str(fileName))[0]
+            # get file's name
+            fname = os.path.splitext(str(fileName))[0]
 
-        # creates json file
-        jsonFile = open(fname + '.json', 'w')
+            # creates json file
+            jsonFile = open(fname + '.json', 'w')
 
-        # dictionary to store in json
-        secretInfo = {}
+            # dictionary to store in json
+            secretInfo = {}
 
-        # converts bytes to non-bytes, so they can be stored on json
-        secretInfo["RSACipher"] = base64.b64encode(RSACipher).decode('utf-8')
-        secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
-        secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
-        secretInfo["tag"] = base64.b64encode(tag).decode('utf-8')
-        secretInfo["file_extension"] = ext
+            # converts bytes to non-bytes, so they can be stored on json
+            secretInfo["RSACipher"] = base64.b64encode(RSACipher).decode('utf-8')
+            secretInfo["ciphertext"] = base64.b64encode(C).decode('utf-8')
+            secretInfo["IV"] = base64.b64encode(IV).decode('utf-8')
+            secretInfo["tag"] = base64.b64encode(tag).decode('utf-8')
+            secretInfo["file_extension"] = ext
 
-        # dump the data from json onto the created file
-        json.dump(secretInfo, jsonFile)
+            # dump the data from json onto the created file
+            json.dump(secretInfo, jsonFile)
 
-        # remove original files
-        os.remove(fileName)
+            # remove original files
+            os.remove(fileName)
 
 
 def dirDecryptor():
+    # current work directory
+    dirPath = os.path.dirname(os.path.realpath(__file__))
     # gets file list of cwd
-    files = os.listdir()
+    files = os.listdir(dirPath)
     # if the folder with the keys currently doesn't exist
     if "keyFolder" not in files:
         # nothing else possible to decrypt
@@ -239,23 +247,24 @@ def dirDecryptor():
     # else continue decrypting
     else:
         for fileName in files:
-            # reads the file
-            jread = open(fileName, 'r')
-            # loads all the json content
-            jsonContent = json.load(jread)
+            if fileName != "keyFolder" and fileName != "FileEncryptionMAC.py" and fileName != "constants.py":
+                # reads the file
+                jread = open(fileName, 'r')
+                # loads all the json content
+                jsonContent = json.load(jread)
 
-            # decodes all json data into their variables
-            RSACipher = base64.b64decode(jsonContent["RSACipher"])
-            C = base64.b64decode(jsonContent["ciphertext"])
-            IV = base64.b64decode(jsonContent["IV"])
-            tag = base64.b64decode(jsonContent["tag"])
-            ext = jsonContent["file_extension"]
+                # decodes all json data into their variables
+                RSACipher = base64.b64decode(jsonContent["RSACipher"])
+                C = base64.b64decode(jsonContent["ciphertext"])
+                IV = base64.b64decode(jsonContent["IV"])
+                tag = base64.b64decode(jsonContent["tag"])
+                ext = jsonContent["file_extension"]
 
-            # RSADecrypt the json data
-            MyRSADecrypt(RSACipher, C, IV, fileName, ext, "keyFolder/private_key.pem", tag)
+                # RSADecrypt the json data
+                MyRSADecrypt(RSACipher, C, IV, fileName, ext, "keyFolder/private_key.pem", tag)
 
-            # close json file
-            jread.close()
+                # close json file
+                jread.close()
 
-            # remove json files
-            os.remove(fileName)
+                # remove json files
+                os.remove(fileName)
