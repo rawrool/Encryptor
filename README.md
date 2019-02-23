@@ -1,2 +1,3 @@
-# Group_Sleeper_Reapers
-Group repo for CECS 378. Group members: Raul Herrera and Anthony Myers
+# Encryptor
+This application is capable of encrypting all files within a directory.
+Group members: Raul Herrera and Anthony Myers
